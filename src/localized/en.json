@@ -318,5 +318,18 @@
   "所在市场": "Market Sector",
   "打开原始来源": "Open Original Source",
   "打开官方来源": "Open Official Source",
-  "打开快照": "Open Snapshot"
+  "打开快照": "Open Snapshot",
+  "研究前覆盖检查 ·": "Source coverage check ·",
+  "这是登记与匹配情况，实际采集可能失败或无结果。": "This checks registered sources and matching; collection may fail or return no results.",
+  "不适用的来源会跳过；中国研究不会默认选中美国来源。缺少本地客户证据时，报告会保持待验证。": "Inapplicable sources are skipped. China research excludes US-only sources by default. Local demand remains unverified without local customer evidence.",
+  "未登记适用信源": "No applicable sources registered",
+  "没有匹配的登记档案": "No matching registered profiles",
+  "已检索，没有匹配结果": "Search completed with no matches",
+  "竞品官网事实": "Official competitor pages",
+  "Stack Exchange 英文问答": "Stack Exchange (English community)",
+  "CFPB 美国消费投诉": "CFPB (US consumer complaints)",
+  "USAspending 美国合同": "USAspending (US contracts)",
+  "覆盖待配置": "Coverage needs configuration",
+  "没有匹配结果": "No matching results",
+  "上次检查：": "Last check:"
 }
