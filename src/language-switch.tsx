@@ -1,0 +1,2 @@
+import{useState}from'react';import{setLocale,getLocale}from'./localized/jsx-runtime';import{request}from'./api';
+export function LanguageSwitch(){const[locale,setValue]=useState(getLocale());return <select className="language-switch" aria-label="界面语言" value={locale} onChange={e=>{const v=e.target.value;setValue(v);setLocale(v);request('/settings','PATCH',{locale:v}).catch(()=>{})}}><option value="zh">中文</option><option value="en">English</option></select>}

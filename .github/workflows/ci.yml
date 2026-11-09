@@ -1,0 +1,35 @@
+name: Validate
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nedveo_test
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nedveo_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk postgresql-client
+      - run: npm ci
+      - name: Create restricted test role
+        env:
+          PGPASSWORD: ci-only-password
+        run: psql -h 127.0.0.1 -U postgres -d nedveo_test -c 'CREATE ROLE nedveo_test LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD '"'"'ci-app-only'"'"';' -c 'GRANT CREATE, USAGE ON SCHEMA public TO nedveo_test;'
+      - run: npm test
+        env:
+          TEST_DATABASE_URL: postgresql://nedveo_test:ci-app-only@127.0.0.1:5432/nedveo_test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - run: npm audit --omit=dev --audit-level=high
+      - run: docker build -t nedveo-ci .

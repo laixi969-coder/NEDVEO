@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import{mkdirSync,writeFileSync}from'node:fs';
+import{verifyReport}from'../server/research/contracts.js';
+const base='http://127.0.0.1:4311/api';
+async function request(path,method='GET',data){const r=await fetch(base+path,{method,headers:{'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});if(!r.ok){const problem=await r.json();throw Error(problem.error||'HTTP '+r.status)}return r.json()}
+const config=await request('/research/config');
+if(!config.provider.configured){console.error('尚未保存模型配置：请在账户与配置点击保存模型配置，看到已保存并用于研究后重试。');process.exit(2)}
+const verifyId=process.argv[2]==='--verify-task'?process.argv[3]:null;
+const existingId=process.argv[2]==='--task'?process.argv[3]:null;
+const task=verifyId?await request('/jobs/'+verifyId):existingId?await request('/tasks/'+existingId+'/retry','POST',{}):await request('/research-tasks','POST',{query:'日本居家养老中，家庭与专业照护者在交接和日常信息同步方面有哪些值得验证的需求？重点区分使用者、预算人、支付者，寻找免费替代和不成立的反证。',market:'日本',sources:['crossref','stackexchange','worldbank']});
+let current,lastStatus='';const started=Date.now();
+while(Date.now()-started<600000){current=await request('/jobs/'+task.id);if(current.status!==lastStatus){console.log(current.status+'：'+(current.message||current.events?.at(-1)?.message||''));lastStatus=current.status}if(current.status==='completed')break;if(['failed','paused_budget','canceled','insufficient_evidence','awaiting_provider'].includes(current.status))throw Error(current.message||current.error||current.status);await new Promise(r=>setTimeout(r,1500))}
+assert.equal(current?.status,'completed','研究超过验收等待时间，保留任务供继续检查');
+const state=await request('/state'),opportunity=state.opportunities.find(o=>o.id===current.opportunity_id);assert.ok(opportunity&&!opportunity.demo);
+verifyReport(opportunity.report,opportunity.evidence);assert.ok(opportunity.report.claims.some(c=>c.quotes.length));assert.equal(opportunity.payment,'L0');assert.equal(opportunity.score,null);
+const versions=await request('/reports/'+opportunity.id+'/versions');assert.ok(versions.some(v=>v.version===opportunity.version));
+const exported=await fetch(base+'/reports/'+opportunity.id+'/export?version='+opportunity.version);assert.equal(exported.status,200);const markdown=await exported.text();assert.ok(!markdown.includes('演示假设'));for(const claim of opportunity.report.claims)for(const q of claim.quotes){assert.ok(markdown.includes(q.text));const source=opportunity.evidence.find(e=>e.id===q.evidence_id);if(source.url)assert.ok(markdown.includes(source.url))}
+const before=state.projects.find(p=>p.opportunity_id===opportunity.id);const project=await request('/projects','POST',{opportunity_id:opportunity.id,report_version:opportunity.version});assert.ok(project.id);if(!before){assert.equal(project.source_version,opportunity.version);const denied=await fetch(base+'/projects/'+project.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage:'已复盘',result:''})});assert.equal(denied.status,422);await request('/projects/'+project.id,'PATCH',{stage:'实验中'});await request('/projects/'+project.id,'PATCH',{stage:'待验证'});const final=await request('/state');assert.equal(final.projects.find(p=>p.id===project.id).stage,'待验证')}
+mkdirSync('.data/acceptance',{recursive:true});writeFileSync('.data/acceptance/latest-report.md',markdown);writeFileSync('.data/acceptance/latest-result.json',JSON.stringify({task_id:task.id,opportunity_id:opportunity.id,version:opportunity.version,model:opportunity.model_version,evidence_count:opportunity.evidence.length,claims:opportunity.report.claims.length,source_runs:current.source_runs,cost:current.cost,project_id:project.id,project_stage:'待验证（未执行客户／付费实验）',checked_at:new Date().toISOString()},null,2));console.log('真实模型研究、引用、导出和孵化软件流程已通过；市场需求与付款仍待验证。');

@@ -1,0 +1,4 @@
+const CACHE='nedveo-shell-v1';
+self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/','/icon.svg','/manifest.webmanifest']))));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('nedveo-shell-')&&k!==CACHE).map(k=>caches.delete(k))))));
+self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/'))return;if(event.request.mode==='navigate'){event.respondWith(fetch(event.request).catch(()=>caches.match('/')));return}if(url.pathname.startsWith('/assets/'))event.respondWith(caches.open(CACHE).then(async c=>{const cached=await c.match(event.request);if(cached)return cached;const response=await fetch(event.request);if(response.ok)c.put(event.request,response.clone());return response}))});

@@ -1,0 +1,55 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      AUTH_REQUIRED: '1'
+      HOST: 0.0.0.0
+      PORT: 4311
+    volumes:
+      - nedveo-data:/app/.data
+    expose:
+      - '4311'
+    depends_on:
+      db:
+        condition: service_healthy
+    init: true
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    env_file: .env.database
+    environment:
+      POSTGRES_DB: nedveo
+      POSTGRES_USER: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/postgres/init.sh:/docker-entrypoint-initdb.d/10-nedveo.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d nedveo']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      NEDVEO_DOMAIN: ${NEDVEO_DOMAIN:?set NEDVEO_DOMAIN in shell or .env}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+volumes:
+  postgres-data:
+  nedveo-data:
+  caddy-data:
+  caddy-config:
