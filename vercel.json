@@ -17,6 +17,10 @@
       "maxDuration": 300,
       "includeFiles": "{server/**,site/**}"
     },
+    "api/gateway.js": {
+      "maxDuration": 300,
+      "includeFiles": "{server/**,site/**}"
+    },
     "api/\\[...path\\].js": {
       "maxDuration": 300,
       "includeFiles": "{server/**,site/**}"
@@ -26,6 +30,12 @@
     {
       "path": "/api/cron",
       "schedule": "0 2 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:first/:rest*",
+      "destination": "/api/gateway?__nedveo_path=:first/:rest*"
     }
   ],
   "redirects": [
