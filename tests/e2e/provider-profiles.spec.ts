@@ -1,0 +1,20 @@
+import {test,expect} from '@playwright/test';
+test('国内与海外配置、密钥草稿、模型测试及切换规则独立保存',async({page,request})=>{
+ const config=await(await request.get('/api/research/config')).json();
+ config.providers={profiles:{domestic:{configured:false},overseas:{configured:false}},routing:{defaultProfile:'domestic',automaticFailover:true,allowTimeoutFailover:false,ready:false}};config.modelCatalogs={};
+ await page.route('**/api/research/config',r=>r.fulfill({json:config}));
+ const saved:any={},seen:any={};
+ await page.route('**/api/research/provider?profile=overseas',async r=>{const body=r.request().postDataJSON();saved.overseas=body;const{apiKey,...safe}=body;config.providers.profiles.overseas={...safe,configured:true,keyConfigured:true};config.providers.routing.ready=!!config.providers.profiles.domestic.configured;await r.fulfill({json:config.providers.profiles.overseas})});
+ await page.route('**/api/research/provider',async r=>{const body=r.request().postDataJSON();saved.domestic=body;const{apiKey,...safe}=body;config.providers.profiles.domestic={...safe,configured:true,keyConfigured:true};config.providers.routing.ready=!!config.providers.profiles.overseas.configured;await r.fulfill({json:config.providers.profiles.domestic})});
+ await page.route('**/api/research/provider/models?profile=overseas',async r=>{seen.models=r.request().postDataJSON();await r.fulfill({json:{models:[{id:'overseas-latest',created:1760000000,owned_by:'fixture'}],synced_at:new Date().toISOString()}})});
+ await page.route('**/api/research/provider/test?profile=overseas',async r=>{seen.test=r.request().postDataJSON();await r.fulfill({json:{ok:true,model:'overseas-latest',latency_ms:20,cost:null}})});
+ await page.route('**/api/research/provider-routing',async r=>{seen.routing=r.request().postDataJSON();config.providers.routing={...seen.routing,ready:true};await r.fulfill({json:config.providers})});
+ await page.goto('/?view=integrations');await expect(page.getByRole('heading',{name:'双模型服务与自动切换'})).toBeVisible();
+ await page.getByLabel('API 地址',{exact:true}).fill('https://domestic.example/v1');await page.getByLabel('API 密钥',{exact:true}).fill('fixture-domestic-key');await page.getByLabel('模型 ID',{exact:true}).fill('domestic-model');
+ await page.getByRole('tab',{name:/海外服务/}).click();await expect(page.getByLabel('API 密钥',{exact:true})).toHaveValue('');await page.getByLabel('API 地址',{exact:true}).fill('https://overseas.example/v1');await page.getByLabel('API 密钥',{exact:true}).fill('fixture-overseas-key');
+ await page.getByRole('button',{name:'同步最新模型',exact:true}).click();expect(seen.models.apiKey).toBe('fixture-overseas-key');await page.getByLabel('选择已同步模型',{exact:true}).selectOption('overseas-latest');await page.getByRole('button',{name:'测试模型响应',exact:true}).click();await expect(page.getByText(/模型响应成功：overseas-latest/)).toBeVisible();expect(seen.test.baseURL).toBe('https://overseas.example/v1');
+ await page.getByRole('button',{name:'保存模型配置',exact:true}).click();await expect(page.getByRole('tab',{name:/海外服务 · 已保存/})).toBeVisible();expect(saved.overseas.apiKey).toBe('fixture-overseas-key');
+ await page.getByRole('tab',{name:/国内服务/}).click();await expect(page.getByLabel('API 密钥',{exact:true})).toHaveValue('fixture-domestic-key');await expect(page.getByLabel('模型 ID',{exact:true})).toHaveValue('domestic-model');await page.getByRole('button',{name:'保存模型配置',exact:true}).click();await expect(page.getByRole('tab',{name:/国内服务 · 已保存/})).toBeVisible();expect(saved.domestic.apiKey).toBe('fixture-domestic-key');
+ await page.getByLabel('默认模型服务',{exact:true}).selectOption('overseas');await page.getByLabel(/允许请求超时后切换/).check();await page.getByRole('button',{name:'保存切换规则',exact:true}).click();await expect.poll(()=>seen.routing?.defaultProfile).toBe('overseas');expect(seen.routing.allowTimeoutFailover).toBe(true);expect(seen.routing.automaticFailover).toBe(true);
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+});

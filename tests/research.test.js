@@ -72,3 +72,9 @@ test('缓存不能把其他国家或其他行业的Feed移作本地证据',()=>{
  for(const[id,market,industries]of [['cn-tech','中国',['technology']],['us-tech','美国',['technology']],['cn-health','中国',['health']]]){engine.put('market_sources',{id,market,industries,state:'active',expires_at:'2099-01-01'});engine.put('signals',{...ev,id,source_id:'licensed_feeds',registry_id:id,market})}
  const cached=engine.cachedSignals('licensed_feeds','caregiver','中国','technology');assert.deepEqual(cached.map(e=>e.id),['cn-tech']);store.db.close();
 });
+test('主服务故障后完整核心与商业分析继续备用，报告和导出固定真实调用记录',async()=>{
+ const{modelTransportError}=await import('../server/research/provider.js'),{renderReportMarkdown}=await import('../server/research/export.js');const seen=[];
+ const bundle={version:2,profiles:{domestic:{...config,model:'domestic'},overseas:{...config,model:'overseas',baseURL:'https://backup.example/v1'}},routing:{defaultProfile:'domestic',automaticFailover:true,allowTimeoutFailover:false}};
+ const{engine,store}=make({cfg:bundle,model:async c=>{seen.push(c.model);if(c.model==='domestic')throw modelTransportError({code:'ECONNRESET'});return{output:report(),usage:{input_tokens:100,output_tokens:100},model_version:c.model}}});
+ const task=engine.create(input);await engine.run(task.id);const done=engine.get('tasks',task.id);assert.equal(done.status,'completed');assert.deepEqual(seen,['domestic','overseas','overseas']);const o=engine.get('opportunities',done.opportunity_id);assert.equal(o.model_calls.length,3);assert.equal(o.provider_switches.length,1);assert.equal(o.core_provider_profile,'overseas');assert.equal(o.business_provider_profile,'overseas');assert.match(renderReportMarkdown(o),/模型调用与切换/);assert.ok(!JSON.stringify(o).includes('secret-never-return'));store.db.close();
+});

@@ -15,6 +15,7 @@ import { createVault } from './research/vault.js';
 import { ResearchEngine } from './research/engine.js';
 import { registerResearchRoutes,invalidateEvidence } from './research/routes.js';
 import { publicProvider } from './research/provider.js';
+import{publicProviders}from'./research/provider-profiles.js';
 import { dirname } from 'node:path';
 import{createProject,updateProject}from'./projects.js';
 import{renderFormat}from'./research/formats.js';
@@ -43,7 +44,7 @@ auth.routes(app);
 app.use('/api',(req,res,next)=>{if(req.path==='/health')return next();const user=remote?auth.user(req):{workspace:'local-owner',role:'admin'};if(!user)return res.status(401).json({error:'请登录'});if(remote&&!allowed(user.workspace_role,req.method,req.path))return res.status(403).json({error:'当前工作空间角色无权执行此操作'});context.run(user,next)});
 function audit(action,id){store.put(tenant,'audit',randomUUID(),{action,resource:id,at:new Date().toISOString()});}
 app.get('/api/health',(_,res)=>res.json({status:'ok',storage:rawStore.storage||'sqlite',mode:remote?'authenticated':'local-only',version:'0.3.0'}));
-app.get('/api/state',(_,res)=>res.json({industries:INDUSTRIES,workspace:activeTenant(),deployment:{authenticated:remote},opportunities:[...demoOpportunities,...store.list(tenant,'opportunities')],provider:publicProvider(engine.config()),sources:engine.sources(),usage:engine.usage(),monitors:engine.list('monitors'),alerts:engine.list('alerts'),demoMode:process.env.SHOW_DEMO==='1',bookmarks:store.list(tenant,'bookmarks').map(x=>x.id),projects:store.list(tenant,'projects'),tasks:store.list(tenant,'tasks'),settings:store.get(tenant,'settings','main')||{role:'独立创业者',locale:'zh',budget:0},evidence:store.list(tenant,'evidence')}));
+app.get('/api/state',(_,res)=>res.json({industries:INDUSTRIES,workspace:activeTenant(),deployment:{authenticated:remote},opportunities:[...demoOpportunities,...store.list(tenant,'opportunities')],provider:publicProvider(engine.config()),providers:publicProviders(engine.providers()),sources:engine.sources(),usage:engine.usage(),monitors:engine.list('monitors'),alerts:engine.list('alerts'),demoMode:process.env.SHOW_DEMO==='1',bookmarks:store.list(tenant,'bookmarks').map(x=>x.id),projects:store.list(tenant,'projects'),tasks:store.list(tenant,'tasks'),settings:store.get(tenant,'settings','main')||{role:'独立创业者',locale:'zh',budget:0},evidence:store.list(tenant,'evidence')}));
 app.post('/api/bookmarks/:id',(req,res)=>{const id=req.params.id;if(!demoOpportunities.some(o=>o.id===id)&&!store.get(tenant,'opportunities',id))return res.status(404).json({error:'机会不存在'});if(store.get(tenant,'bookmarks',id))store.remove(tenant,'bookmarks',id);else store.put(tenant,'bookmarks',id,{id});audit('toggle_watch',id);res.json({bookmarks:store.list(tenant,'bookmarks').map(x=>x.id)});});
 registerResearchRoutes(app,engine,audit);
 registerWorkspaceRoutes(app,engine,audit);
