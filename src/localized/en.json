@@ -331,5 +331,8 @@
   "USAspending 美国合同": "USAspending (US contracts)",
   "覆盖待配置": "Coverage needs configuration",
   "没有匹配结果": "No matching results",
-  "上次检查：": "Last check:"
+  "上次检查：": "Last check:",
+  "已认证工作空间 · PostgreSQL 持久化": "Authenticated workspace · PostgreSQL storage",
+  "材料与研究记录保存在已配置的云数据库中，采集和研究由云端服务执行。": "Materials and research records are stored in the configured cloud database; collection and research run on cloud services.",
+  "材料与研究记录保存在配置的存储中，采集与模型研究由后台服务执行。": "Materials and research records are stored in the configured storage; collection and research run in the backend."
 }
