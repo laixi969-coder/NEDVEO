@@ -7,12 +7,20 @@ function minBudget(...values){const finite=values.filter(Number.isFinite);return
 function healthId(profile,config){return fingerprint(profile+'|'+config.baseURL+'|'+config.model+'|'+config.apiKey)}
 
 export async function invokeWithFailover(engine,taskId,messages,schema,options={}){
+ const owner=randomUUID(),store=engine.store,lease='paid-model-call';
+ if(store.acquireLease&&!store.acquireLease(engine.tenant,lease,owner))throw Object.assign(Error('本工作空间有其他模型请求正在执行，请稍后再试'),{state:'workspace_busy',status:409});
+ const assertLease=()=>{if(store.ownsLease&&!store.ownsLease(engine.tenant,lease,owner))throw Error('模型执行租约已失效，停止继续请求；请复核费用后重试')};
+ try{return await invokeRouted(engine,taskId,messages,schema,{...options,assertLease})}finally{store.releaseLease?.(engine.tenant,lease,owner)}
+}
+
+async function invokeRouted(engine,taskId,messages,schema,options={}){
+ options.assertLease?.();
  const {signal,config:override}=options,bundle=engine.providers(),task=engine.get('tasks',taskId);
  const selected=options.preferredProfile||task?.provider_profile||bundle.routing.defaultProfile,primary=override||bundle.profiles[selected];
  if(!primary?.apiKey)throw Object.assign(Error('请先配置所选模型服务和密钥'),{state:'awaiting_provider'});
  const routeKey=fingerprint(JSON.stringify(bundle)),sticky=task?.provider_route_key===routeKey&&task.active_provider;
  const start=!override&&sticky?sticky:selected,config=override||bundle.profiles[start],group=randomUUID();
- const attempt=(profile,candidate,attemptNumber)=>invokeAttempt(engine,taskId,messages,schema,{...options,config:candidate,profile,attemptNumber,group,budgetPolicy:primary});
+ const attempt=(profile,candidate,attemptNumber)=>invokeAttempt(engine,taskId,messages,schema,{...options,config:candidate,profile,attemptNumber,group,budgetPolicy:primary,assertLease:options.assertLease});
  try{
   const health=!override&&engine.get('provider_health',healthId(start,config));
   if(health?.next_allowed_at&&Date.parse(health.next_allowed_at)>Date.now())throw Object.assign(Error('模型服务仍处于供应商要求的等待期，请稍后再试'),{category:health.category,cooldown:true});
@@ -33,7 +41,8 @@ export async function invokeWithFailover(engine,taskId,messages,schema,options={
  }
 }
 
-async function invokeAttempt(engine,taskId,messages,schema,{signal,maxOutput,config,profile,group,attemptNumber,budgetPolicy}){
+async function invokeAttempt(engine,taskId,messages,schema,{signal,maxOutput,config,profile,group,attemptNumber,budgetPolicy,assertLease}){
+ assertLease?.();
  if(signal?.aborted)throw Object.assign(Error('模型调用已取消'),{category:'canceled'});
  const outputLimit=Math.min(maxOutput||config.maxOutput,config.maxOutput),dailyBudget=minBudget(config.dailyBudget,budgetPolicy.dailyBudget),taskBudget=minBudget(config.taskBudget,budgetPolicy.taskBudget);
  const priced=Number.isFinite(config.inputPrice)&&Number.isFinite(config.outputPrice),limited=Number.isFinite(dailyBudget)||Number.isFinite(taskBudget);

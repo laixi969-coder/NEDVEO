@@ -78,3 +78,11 @@ test('主服务故障后完整核心与商业分析继续备用，报告和导�
  const{engine,store}=make({cfg:bundle,model:async c=>{seen.push(c.model);if(c.model==='domestic')throw modelTransportError({code:'ECONNRESET'});return{output:report(),usage:{input_tokens:100,output_tokens:100},model_version:c.model}}});
  const task=engine.create(input);await engine.run(task.id);const done=engine.get('tasks',task.id);assert.equal(done.status,'completed');assert.deepEqual(seen,['domestic','overseas','overseas']);const o=engine.get('opportunities',done.opportunity_id);assert.equal(o.model_calls.length,3);assert.equal(o.provider_switches.length,1);assert.equal(o.core_provider_profile,'overseas');assert.equal(o.business_provider_profile,'overseas');assert.match(renderReportMarkdown(o),/模型调用与切换/);assert.ok(!JSON.stringify(o).includes('secret-never-return'));store.db.close();
 });
+test('Vercel分阶段执行可跨冷启动恢复，单阶段最多执行一次模型逻辑调用',async()=>{
+ const{engine,store}=make();const task=engine.create(input);let current=engine,steps=0;
+ while(current.get('tasks',task.id).status!=='completed'&&steps<8){const before=current.list('ledger').length;await current.run(task.id,{step:true});assert.ok(current.list('ledger').length-before<=1);current=new ResearchEngine(store,engine.vault,{autoStart:false,recoverInterrupted:false,model:engine.model,collect:engine.collect});steps++}
+ assert.equal(current.get('tasks',task.id).status,'completed');assert.equal(current.list('ledger').length,2);assert.ok(steps>=3);store.db.close();
+});
+test('尚未完成采集阶段时撤回来源，也清除检查点并阻止后续分析',async()=>{
+ const{engine,store}=make({collect:async id=>[{...ev,source_id:id}]});const task=engine.create({...input,sources:['crossref','stackexchange']});await engine.run(task.id,{step:true});assert.equal(engine.get('tasks',task.id).collection_evidence.length,1);invalidateEvidence(engine,null,'crossref');assert.equal(engine.get('tasks',task.id).status,'canceled');assert.deepEqual(engine.get('tasks',task.id).collection_evidence,[]);await engine.run(task.id,{step:true});assert.equal(engine.list('ledger').length,0);store.db.close();
+});

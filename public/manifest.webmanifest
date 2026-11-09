@@ -1,1 +1,1 @@
-{"name":"NEDVEO 苗头","short_name":"苗头","description":"See the Need. Find the Opportunity.","start_url":"/","scope":"/","display":"standalone","background_color":"#f8f9f3","theme_color":"#385843","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
+{"name":"NEDVEO 苗头","short_name":"苗头","description":"See the Need. Find the Opportunity.","start_url":"/app/","scope":"/app/","display":"standalone","background_color":"#f8f9f3","theme_color":"#385843","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}

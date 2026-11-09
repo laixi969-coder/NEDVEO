@@ -1,0 +1,2 @@
+import{cronAuthorized,getVercelRuntime,dispatchScheduled}from'../server/vercel-runtime.js';
+export default async function handler(req,res){res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');if(!cronAuthorized(req.headers.authorization))return res.status(401).json({error:'未授权'});try{const count=await dispatchScheduled(await getVercelRuntime());res.json({ok:true,queued:count})}catch{res.status(503).json({error:'调度暂未完成，请检查部署配置与队列服务'})}}

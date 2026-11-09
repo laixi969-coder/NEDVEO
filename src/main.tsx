@@ -17,7 +17,7 @@ useEffect(()=>{if(!selected&&!form&&!result)return;const before=document.activeE
 const load=()=>api('/state').then(setState).catch(e=>setError(e.message));useEffect(()=>{load()},[]);useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),3500);return()=>clearTimeout(t)}},[toast]);useEffect(()=>{const fn=(e:KeyboardEvent)=>{if(e.key==='Escape'){setSelected(null);setForm('');setResult(null)}if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();document.getElementById('global-search')?.focus()}};window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn)},[]);
 async function act(fn:()=>Promise<any>,message?:string){setBusy(true);try{await fn();await load();if(message)setToast(message)}catch(e:any){setToast(e.message)}finally{setBusy(false)}}
 useEffect(()=>{const t=setInterval(()=>{api('/state').then(setState).catch(()=>{})},3000);return()=>clearInterval(t)},[]);
-const nav=(p:string)=>{history.replaceState(null,'',p==='研究与校准'?'/?view=studio':p==='行业与运行'?'/?view=operations':p==='账户与配置'?'/?view=integrations':p==='我的研究'?'/?view=research':p==='竞品情报'?'/?view=competitors':'/');setPage(p);setQuery('');setMenu(false)};
+const nav=(p:string)=>{history.replaceState(null,'',p==='研究与校准'?'/app/?view=studio':p==='行业与运行'?'/app/?view=operations':p==='账户与配置'?'/app/?view=integrations':p==='我的研究'?'/app/?view=research':p==='竞品情报'?'/app/?view=competitors':'/app/');setPage(p);setQuery('');setMenu(false)};
 const bookmarks:string[]=state?.bookmarks||[];const opportunities:Opportunity[]=state?.opportunities||[];
 const list=opportunities.filter(o=>(!hideDemo||!o.demo)&&(page!=='关注与预警'||bookmarks.includes(o.id))&&(category==='全部行业'||(category===o.category||state?.industries?.some((i:any)=>i.name===category&&i.id===(o as any).industry_id)))&&(market==='全球市场'||market===o.market)&&(track==='all'||track===o.track)&&(!query||[o.title,o.summary,o.category,o.market,...o.tags].join(' ').toLowerCase().includes(query.toLowerCase())));
 function open(o:Opportunity){setSelected(o);setDetailTab('研究概览')}
@@ -45,4 +45,4 @@ return <div className="app"><aside className={'sidebar '+(menu?'mobile-open':'')
 </div>}
 createRoot(document.getElementById('root')!).render(<React.StrictMode><AuthGate><App/></AuthGate></React.StrictMode>);
 
-if(import.meta.env.PROD&&'serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+if(import.meta.env.PROD&&'serviceWorker'in navigator)navigator.serviceWorker.getRegistrations().then(async registrations=>{for(const r of registrations)if(r.scope===location.origin+'/'&&r.active?.scriptURL===location.origin+'/sw.js')await r.unregister();await navigator.serviceWorker.register('/sw.js',{scope:'/app/'})}).catch(()=>{});

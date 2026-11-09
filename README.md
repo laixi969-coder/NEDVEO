@@ -45,6 +45,10 @@ npm start
 
 私人材料只在本次明确选择并勾选发送授权后进入模型。切换时发送至备用服务需要本次单独勾选授权。模型服务的数据处理政策由所选供应商决定。主备调用独立记账，失败费用不伪装为零，备用不能绕过首选服务及自身的预算；任务、报告与导出记录实际服务和切换原因。详见 [ADR-010](docs/ADR-010-provider-failover.md)。
 
+## Vercel 与公开站点
+
+公开介绍、研究方法、信源、FAQ 和指南已生成中英文静态页面；工作台位于 `/app/`，账户和私人研究不进入公开站点地图。正式域名使用 `PUBLIC_URL`，预览部署默认不索引。完整的环境变量、PostgreSQL、队列和部署后验证见 [Vercel 部署说明](docs/VERCEL_DEPLOYMENT.md)。
+
 ## 真实信源与边界
 
 | 信源 | 获取内容 | 不支持的推断 |
@@ -100,7 +104,7 @@ npm audit --omit=dev --audit-level=high
 
 React/TypeScript/Vite + Express + Node SQLite。`.data/nedveo.sqlite` 保存记录；`.data/provider.enc` 与 `.data/vault.key` 保存加密配置和 0600 本机密钥。备份时保护整个目录。当前用户若已具备本机文件读取权限，也能解密配置，这不是外部 KMS。
 
-可设 `PORT`、`DB_PATH`、`VAULT_DIR`。不在 Git 中提交 `.data/` 或密钥。前端使用 Google Fonts，可离线回退本地字体。
+可设 `PORT`、`DB_PATH`、`VAULT_DIR`。不在 Git 中提交 `.data/` 或密钥。前端使用系统字体，无需从外部字体服务加载。
 
 回退前停服务并备份 `.data/`。恢复旧代码后执行 `npm ci && npm run build`。旧演示版本不能继续操作新增的真实研究对象；回退以备份为准。删除 `.data/` 会不可逆清除本机私人研究及模型配置。
 

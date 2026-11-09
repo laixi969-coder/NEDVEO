@@ -1,0 +1,73 @@
+{
+  "framework": null,
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/research-worker.js": {
+      "maxDuration": 300,
+      "includeFiles": "{server/**,site/**}",
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "nedveo-research"
+        }
+      ]
+    },
+    "api/cron.js": {
+      "maxDuration": 300,
+      "includeFiles": "{server/**,site/**}"
+    },
+    "api/\\[...path\\].js": {
+      "maxDuration": 300,
+      "includeFiles": "{server/**,site/**}"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "0 2 * * *"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "view",
+          "value": "(?<view>.*)"
+        }
+      ],
+      "destination": "/app/?view=:view",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/app/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
+    }
+  ]
+}
