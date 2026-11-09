@@ -7,7 +7,7 @@
 | 变量 | 用途 |
 | --- | --- |
 | `PUBLIC_URL` | 正式站点根地址，例如 `https://nedveo.vercel.app`；必须与实际访问域名一致，不能含路径 |
-| `DATABASE_URL` | 托管 PostgreSQL 的连接地址；应用角色需要建表权限，不能为 SUPERUSER 或 BYPASSRLS |
+| `DATABASE_URL` | 托管 PostgreSQL 的连接地址；应用角色需要建表权限，不能为 SUPERUSER 或 BYPASSRLS。Vercel Neon 集成默认账户不满足此要求，应单独创建受限角色并设置 `NEDVEO_DATABASE_URL`；该变量优先于集成默认地址。 |
 | `VAULT_MASTER_KEY` | 32 字节随机数据的 Base64 编码，用于加密各工作空间模型密钥 |
 | `ADMIN_EMAIL` | 首次初始化管理员邮箱 |
 | `ADMIN_PASSWORD` | 首次初始化管理员密码，至少 12 字符 |

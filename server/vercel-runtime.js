@@ -3,10 +3,10 @@ import{createApplication}from'./app.js';
 import{researchMessage}from'./queue-jobs.js';
 let singleton;
 export function validateVercelEnvironment(env=process.env){
- const missing=['DATABASE_URL','VAULT_MASTER_KEY','ADMIN_EMAIL','ADMIN_PASSWORD','CRON_SECRET'].filter(k=>!env[k]);if(missing.length)throw Error('缺少部署环境变量：'+missing.join(', '));
+ const missing=['VAULT_MASTER_KEY','ADMIN_EMAIL','ADMIN_PASSWORD','CRON_SECRET'].filter(k=>!env[k]);if(!env.NEDVEO_DATABASE_URL&&!env.DATABASE_URL)missing.unshift('DATABASE_URL');if(missing.length)throw Error('缺少部署环境变量：'+missing.join(', '));
  const key=Buffer.from(env.VAULT_MASTER_KEY,'base64');if(key.length!==32)throw Error('VAULT_MASTER_KEY 必须是32字节Base64密钥');
  if(env.CRON_SECRET.length<32)throw Error('CRON_SECRET 至少32字符');
- if(!/^postgres(?:ql)?:\/\//.test(env.DATABASE_URL))throw Error('Vercel 部署必须使用 PostgreSQL 持久存储');
+ if(!/^postgres(?:ql)?:\/\//.test(env.NEDVEO_DATABASE_URL||env.DATABASE_URL))throw Error('Vercel 部署必须使用 PostgreSQL 持久存储');
  if(!env.PUBLIC_URL||!env.PUBLIC_URL.startsWith('https://'))throw Error('请设置正式 HTTPS PUBLIC_URL');
 }
 export async function publishResearch(message){const{send}=await import('@vercel/queue');return send('nedveo-research',message,{idempotencyKey:message.task_id+':'+message.generation+':'+message.sequence,retentionSeconds:86400})}
