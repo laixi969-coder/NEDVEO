@@ -1,3 +1,4 @@
+import{scheduleDiscovery}from'./research/discovery.js';
 import{createHash,timingSafeEqual}from'node:crypto';
 import{createApplication}from'./app.js';
 import{researchMessage}from'./queue-jobs.js';
@@ -12,4 +13,4 @@ export function validateVercelEnvironment(env=process.env){
 export async function publishResearch(message){const{send}=await import('@vercel/queue');return send('nedveo-research',message,{idempotencyKey:message.task_id+':'+message.generation+':'+message.sequence,retentionSeconds:86400})}
 export function getVercelRuntime(){if(!singleton){validateVercelEnvironment();singleton=createApplication({serverless:true,enqueueResearch:(workspace,task)=>publishResearch(researchMessage(workspace,task))}).catch(e=>{singleton=null;throw e})}return singleton}
 export function cronAuthorized(header,secret=process.env.CRON_SECRET){if(!secret||secret.length<32||typeof header!=='string')return false;const hash=v=>createHash('sha256').update(v).digest();return timingSafeEqual(hash(header),hash('Bearer '+secret))}
-export async function dispatchScheduled(runtime){let count=0;const workspaces=[...new Set(['local-owner',...runtime.auth.listWorkspaces()])];for(const workspace of workspaces){const e=runtime.getEngine(workspace);await e.schedule();for(const task of e.list('tasks'))if(task.status==='queued'&&task.run_generation){await e.enqueue(task);count++}}return count}
+export async function dispatchScheduled(runtime){let count=0;const workspaces=[...new Set(['local-owner',...runtime.auth.listWorkspaces()])];for(const workspace of workspaces){const e=runtime.getEngine(workspace);await e.schedule();await scheduleDiscovery(e);for(const task of e.list('tasks'))if(task.status==='queued'&&task.run_generation){await e.enqueue(task);count++}}return count}

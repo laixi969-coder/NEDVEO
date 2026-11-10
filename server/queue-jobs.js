@@ -10,7 +10,7 @@ export async function processResearchMessage(runtime,input,{publish}={}){
  const owner=randomUUID(),lease='research:'+task.id;
  if(!engine.store.acquireLease(engine.tenant,lease,owner))throw Object.assign(Error('研究阶段仍由另一个执行实例处理'),{retryAfter:30});
  try{
-  const current=engine.get('tasks',task.id);if(current.run_generation!==msg.generation||stopped.has(current.status))return{ignored:true};if(msg.sequence<(current.job_sequence||0)){await publish(researchMessage(msg.workspace,current));return{resumed:true}}if(msg.sequence!==(current.job_sequence||0))return{ignored:true};if(current.phase_execution?.state==='running'){
+  const current=engine.get('tasks',task.id);if(current.run_generation!==msg.generation||stopped.has(current.status))return{ignored:true};if(msg.sequence<(current.job_sequence||0)){await publish(researchMessage(msg.workspace,current));return{resumed:true}}if(msg.sequence!==(current.job_sequence||0))return{ignored:true};if(current.phase_execution?.state==='running'&&current.kind!=='daily_discovery'){
    for(const l of engine.list('ledger'))if(l.task_id===task.id&&l.request_state==='in_flight')engine.put('ledger',{...l,status:l.charged===null?'unpriced_unknown_after_restart':'charge_unknown',request_state:'unknown_after_interrupt'});
    engine.update(task.id,{status:'failed',message:'上次阶段执行中断；为避免重复付费，已停止自动重试，请复核费用后手动重试',phase_execution:{...current.phase_execution,state:'interrupted'},cost:engine.taskCost(task.id)});return{interrupted:true};
   }
